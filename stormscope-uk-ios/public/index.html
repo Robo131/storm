@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en-GB"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="StormScope">
+<meta name="theme-color" content="#0b0d10">
+<link rel="apple-touch-icon" href="icons/icon-180.png"><link rel="icon" href="icons/icon-192.png"><link rel="manifest" href="manifest.webmanifest">
+<title>StormScope UK</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root{--bg:#0b0d10;--pn:rgba(20,23,28,.96);--ln:#272c34;--tx:#e1e5eb;--mu:#8b95a3;--ac:#5b9bff;--ok:#3fb950;--wn:#d4a72c;--bd:#f85149;--sb:env(safe-area-inset-bottom,0px);--st:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,"Segoe UI",sans-serif;overflow:hidden}
+#map{position:absolute;inset:0;background:#0a0c0f}
+.leaflet-control-zoom{display:none}
+.leaflet-control-attribution{background:rgba(11,13,16,.7)!important;color:var(--mu)!important;font-size:10px}
+.leaflet-control-attribution a{color:var(--mu)!important}
+.card{background:var(--pn);border:1px solid var(--ln);border-radius:10px;backdrop-filter:blur(6px)}
+.top{position:absolute;z-index:1000;top:calc(10px + var(--st));left:10px;right:10px;display:flex;gap:8px}
+.logo{display:flex;align-items:center;gap:8px;padding:0 12px;font-weight:700;white-space:nowrap}.logo b{color:var(--ac)}.logo img{width:24px;height:24px;border-radius:6px}
+.search{flex:1;display:flex;min-width:0}
+.search input{flex:1;min-width:0;background:none;border:0;color:var(--tx);font:inherit;padding:11px 12px;outline:0}
+.search button{background:none;border:0;color:var(--ac);font:inherit;font-weight:600;padding:0 14px;cursor:pointer}
+.dock{position:absolute;z-index:1000;left:10px;right:10px;bottom:calc(66px + var(--sb));padding:10px 12px}
+.row{display:flex;align-items:center;gap:10px}
+.row button{background:#1f242c;border:1px solid var(--ln);color:var(--tx);border-radius:8px;min-width:64px;height:40px;font:inherit;cursor:pointer}
+.row input[type=range]{flex:1;min-width:0;height:40px;accent-color:var(--ac)}
+.status{margin-top:6px;font-size:12.5px;color:var(--mu);display:flex;flex-wrap:wrap;gap:2px 12px}
+.status b{color:var(--tx);font-weight:600}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--mu);margin-right:6px}
+.dot.ok{background:var(--ok)}.dot.warn{background:var(--wn)}.dot.bad{background:var(--bd)}
+nav{position:absolute;z-index:1001;left:0;right:0;bottom:0;display:flex;background:var(--pn);border-top:1px solid var(--ln);padding-bottom:var(--sb)}
+nav button{flex:1;background:none;border:0;color:var(--mu);height:56px;font:inherit;font-size:13px;cursor:pointer}
+nav button.on{color:var(--ac);box-shadow:inset 0 2px 0 var(--ac)}
+.sheet{position:absolute;z-index:1002;left:0;right:0;bottom:calc(56px + var(--sb));max-height:62dvh;overflow:auto;padding:16px 16px 20px;border-radius:14px 14px 0 0;transform:translateY(110%);transition:transform .2s ease;visibility:hidden}
+.sheet.open{transform:none;visibility:visible}
+.sheet h2{margin:0 0 8px;font-size:17px}
+.sheet p{color:var(--mu);margin:0 0 10px;font-size:14px}
+.src{border-top:1px solid var(--ln);padding:10px 0 2px}.src p{margin:2px 0 8px}
+.bar{height:8px;border-radius:3px;background:linear-gradient(90deg,#8ec7ff,#3d7bd9,#1c8f4a,#d4d12c,#e8852a,#d93a2e);margin:6px 0 4px}
+.scale{display:flex;justify-content:space-between;font-size:12px;color:var(--mu)}
+.item{display:block;width:100%;text-align:left;background:#1b2027;border:1px solid var(--ln);color:var(--tx);border-radius:8px;padding:10px 12px;margin:0 0 8px;font:inherit;cursor:pointer}
+.item small{display:block;color:var(--mu);font-size:12.5px}
+.ibtn{position:absolute;z-index:1000;right:10px;top:calc(64px + var(--st));display:flex;flex-direction:column;gap:6px}
+.ibtn button{width:44px;height:44px;font-size:22px;color:var(--tx);cursor:pointer;padding:0}
+.err{position:absolute;inset:0;display:none;place-items:center;text-align:center;padding:30px;color:var(--mu);z-index:5}
+@media(min-width:900px){
+ .top{right:auto;width:420px}.dock{left:10px;right:auto;width:520px;bottom:10px}
+ nav{left:auto;right:10px;top:calc(10px + var(--st));bottom:auto;width:auto;border:1px solid var(--ln);border-radius:10px}
+ nav button{height:44px;padding:0 14px;flex:none}nav button.on{box-shadow:inset 0 -2px 0 var(--ac)}
+ .sheet{left:auto;right:10px;bottom:10px;top:calc(64px + var(--st));width:360px;max-height:none;border-radius:10px;border:1px solid var(--ln)}
+ .ibtn{right:auto;left:440px;top:calc(10px + var(--st));flex-direction:row}}
+@media(prefers-reduced-motion:reduce){.sheet{transition:none}}
+</style></head><body>
+<div id="map"></div>
+<div class="err" id="err">The map could not load. Check your internet connection and reload.</div>
+<div class="top"><div class="card logo"><img src="icons/icon-192.png" alt="">Storm<b>Scope</b></div>
+<form class="card search" id="sf"><input id="q" placeholder="Search a place" aria-label="Search a place" autocomplete="off"><button type="submit">Go</button></form></div>
+<div class="ibtn"><button class="card" id="zi" aria-label="Zoom in">+</button><button class="card" id="zo" aria-label="Zoom out">−</button><button class="card" id="im" aria-label="Centre on Isle of Man">⌂</button></div>
+<div class="card dock"><div class="row"><button id="play">Pause</button><input type="range" id="sl" min="0" max="0" value="0" aria-label="Radar frame"></div>
+<div class="status"><span><span class="dot" id="dot"></span><b id="f-s">Checking</b></span><span>Radar <b id="f-t">–</b></span><span>Refreshed <b id="f-r">–</b></span><span>Detections <b id="f-d">0</b></span></div></div>
+<section class="card sheet" id="sheet" aria-live="polite">
+<div data-v="radar"><h2>Radar</h2><div class="bar"></div><div class="scale"><span>Light rain</span><span>Heavy rain</span></div>
+<p style="margin-top:8px">Observed rainfall as colours, not raw reflectivity.</p>
+<div class="src"><span class="dot" id="d2"></span><b>RainViewer</b><p id="s-rv">Checking…</p></div>
+<div class="src"><span class="dot" id="d-op"></span><b>OPERA composites</b><p id="s-op">Checking…</p></div>
+<div class="src"><span class="dot warn"></span><b>Met Office DataHub</b><p>Not connected. Needs a server-side API key.</p></div>
+<div class="src"><span class="dot warn"></span><b>ECMWF open data</b><p>Not connected. Planned for CAPE, shear and freezing level.</p></div></div>
+<div data-v="storms" hidden><h2>Storms</h2><div id="storms"></div></div>
+<div data-v="atmos" hidden><h2>Atmosphere</h2><p>Not connected. CAPE, shear, helicity and freezing level need ECMWF model data. No values are shown until then.</p></div>
+<div data-v="hist" hidden><h2>History</h2><p>RainViewer keeps about two hours. Longer history needs the OPERA archive, which isn’t connected yet.</p></div>
+<div data-v="set" hidden><h2>Settings</h2><p>Animation speed</p><input type="range" id="spd" min="200" max="1500" value="600" step="100" style="width:100%;height:40px;accent-color:var(--ac)" aria-label="Animation speed"><p style="margin-top:12px">Backend address (for storm detection)</p><input id="api" placeholder="http://192.168.1.20:8000" autocapitalize="off" autocorrect="off" style="width:100%;height:40px;background:#1b2027;border:1px solid var(--ln);color:var(--tx);border-radius:8px;padding:0 10px;font:inherit"><button class="item" id="apis" style="margin-top:8px;text-align:center">Save and reload</button>
+<p style="margin-top:12px">StormScope UK is experimental and not an official warning service. Check the Met Office for warnings.</p></div>
+</section>
+<nav id="nav"><button data-v="radar">Radar</button><button data-v="storms">Storms</button><button data-v="atmos">Atmosphere</button><button data-v="hist">History</button><button data-v="set">Settings</button></nav>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+function el(t,c,x){const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e}
+if(typeof L==='undefined'){$('err').style.display='grid'}else{(async()=>{
+const home=[54.2,-4.5],map=L.map('map',{zoomControl:false,maxZoom:12}).setView(home,6);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© OpenStreetMap © CARTO',maxZoom:19}).addTo(map);
+map.attributionControl.addAttribution('Radar © <a href="https://www.rainviewer.com">RainViewer</a>, OPERA © EUMETNET');
+L.circleMarker([54.23,-4.57],{radius:4,color:'#5b9bff',weight:2,fillOpacity:.9}).addTo(map).bindTooltip('Isle of Man');
+setTimeout(()=>map.invalidateSize(),200);addEventListener('resize',()=>map.invalidateSize());
+$('zi').onclick=()=>map.zoomIn();$('zo').onclick=()=>map.zoomOut();$('im').onclick=()=>map.setView(home,7);
+if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
+const API=(localStorage.getItem('ss_api')||'').replace(/\/+$/,'')||(location.protocol.startsWith('http')?location.origin:'');
+let backend=false;
+if(API)try{const c=new AbortController();setTimeout(()=>c.abort(),3000);backend=(await fetch(API+'/api/health',{signal:c.signal})).ok}catch{}
+let frames=[],layers=[],idx=0,timer,playing=true;
+const fmt=t=>new Date(t*1000).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZoneName:'short'});
+function show(i){if(!layers.length)return;layers[idx].setOpacity(0);idx=i;layers[i].setOpacity(.75);$('sl').value=i;$('f-t').textContent=fmt(frames[i].time)}
+function restart(){clearInterval(timer);timer=setInterval(()=>{if(playing&&layers.length)show((idx+1)%layers.length)},+$('spd').value)}
+function state(cls,label,msg){$('dot').className='dot '+cls;$('d2').className='dot '+cls;$('f-s').textContent=label;$('s-rv').textContent=msg}
+async function load(){
+ try{
+  let list,mk;
+  if(backend){const d=await (await fetch(API+'/api/frames')).json();if(d.status!=='ok')throw new Error(d.reason||'backend error');list=d.frames;mk=f=>`${API}/api/tile/${f.id}/{z}/{x}/{y}.png`}
+  else{const r=await fetch('https://api.rainviewer.com/public/weather-maps.json',{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);const d=await r.json();list=(d.radar&&d.radar.past)||[];mk=f=>`${d.host}${f.path}/256/{z}/{x}/{y}/2/1_1.png`}
+  if(!list.length)throw new Error('no radar frames returned');
+  frames=list;layers.forEach(l=>map.removeLayer(l));idx=0;
+  layers=frames.map(f=>L.tileLayer(mk(f),{opacity:0,maxNativeZoom:7,maxZoom:12,zIndex:5}).addTo(map));
+  $('sl').max=frames.length-1;show(frames.length-1);
+  const age=Math.round((Date.now()/1000-frames[frames.length-1].time)/60);
+  age>25?state('warn','RainViewer delayed',`Delayed: newest frame is ${age} min old.`):state('ok','RainViewer live',`Live. Newest frame is ${age} min old.`);
+  $('f-r').textContent=new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+ }catch(e){state('bad','Radar unavailable','Unavailable: '+e.message+'. No radar is shown and nothing is substituted.')}
+}
+const sg=L.layerGroup().addTo(map);
+const col=d=>d>=55?'#f85149':d>=50?'#e8852a':d>=45?'#d4a72c':'#3fb950';
+const bearing=b=>['N','NE','E','SE','S','SW','W','NW'][Math.round(b/45)%8];
+async function loadStorms(){
+ const box=$('storms');box.replaceChildren();
+ if(!backend){box.append(el('p',0,'Storm detection runs on the StormScope backend, which isn’t reachable. Start it and open the app from its address. Nothing is simulated.'));$('d-op').className='dot warn';$('s-op').textContent='Backend not running.';return}
+ let d;try{d=await (await fetch(API+'/api/storms')).json()}catch(e){d={status:'unavailable',reason:e.message,storms:[],lines:[]}}
+ sg.clearLayers();
+ if(d.status==='starting'){box.append(el('p',0,'Backend is downloading the first OPERA scans. Try again in a minute.'));$('d-op').className='dot warn';$('s-op').textContent='Starting.';return}
+ if(d.status!=='ok'){box.append(el('p',0,'OPERA unavailable: '+(d.reason||'unknown')));$('d-op').className='dot bad';$('s-op').textContent='Unavailable. No detections shown.';$('f-d').textContent='0';return}
+ $('d-op').className='dot '+(d.delayed?'warn':'ok');
+ $('s-op').textContent=`${d.delayed?'Delayed: ':''}Scan ${new Date(d.scan_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}, ${d.age_minutes} min old. Observed, 15-minute steps, ${d.scans_used} scans.`;
+ const n=d.storms.length+d.lines.length;$('f-d').textContent=n;
+ box.append(el('p',0,d.notes));
+ d.lines.forEach((l,i)=>{
+  L.polyline(l.axis,{color:'#e8852a',weight:6,opacity:.7}).addTo(sg);
+  const b=el('button','item','Squall-line candidate');b.append(el('small',0,`Length ${l.length_km} km, width ${l.width_km} km, peak ${Math.round(l.max_dbz)} dBZ, ${Math.round(l.frac_ge45*100)}% of area at 45 dBZ or more. Algorithmic, shape-based, low confidence. Movement not yet estimated.`));
+  b.onclick=()=>map.fitBounds(l.axis,{maxZoom:8,padding:[40,40]});box.append(b)});
+ d.storms.forEach(s=>{
+  L.circleMarker([s.lat,s.lon],{radius:6,color:col(s.max_dbz),weight:2,fillOpacity:.5}).addTo(sg).bindTooltip(s.id);
+  if(s.trail.length>1)L.polyline(s.trail,{color:'#5b9bff',weight:2,opacity:.8}).addTo(sg);
+  if(s.extrapolated)L.polyline([[s.lat,s.lon],...s.extrapolated.map(p=>[p.lat,p.lon])],{color:'#8b95a3',weight:2,dashArray:'4 6'}).addTo(sg).bindTooltip('Extrapolation, not a forecast');
+  const b=el('button','item',`${s.id}: ${s.classification}`);
+  const mv=s.speed_kmh!=null?`${bearing(s.bearing_deg)} at ${s.speed_kmh} km/h, ${s.trend}`:'movement needs 3 scans';
+  b.append(el('small',0,`${Math.round(s.max_dbz)} dBZ, ${mv}. Confidence ${s.confidence}. Rotation: ${s.rotation}.`));
+  b.onclick=()=>map.setView([s.lat,s.lon],9);box.append(b)});
+ if(!n)box.append(el('p',0,'No cells at or above 40 dBZ in the latest scan.'));
+}
+$('play').onclick=()=>{playing=!playing;$('play').textContent=playing?'Pause':'Play'};
+$('sl').oninput=e=>{playing=false;$('play').textContent='Play';show(+e.target.value)};
+$('spd').oninput=restart;
+$('sf').onsubmit=async e=>{e.preventDefault();const q=$('q').value.trim();if(!q)return;
+ try{const j=await (await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q='+encodeURIComponent(q))).json();
+  j[0]?map.setView([+j[0].lat,+j[0].lon],9):alert('No match found.');$('q').blur()}catch{alert('Search is unavailable.')}};
+let cur=null;
+$('nav').onclick=e=>{const v=e.target.dataset.v;if(!v)return;const open=cur!==v;cur=open?v:null;
+ $('sheet').classList.toggle('open',open);
+ document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',open&&b.dataset.v===v));
+ document.querySelectorAll('#sheet [data-v]').forEach(x=>x.hidden=x.dataset.v!==v)};
+$('api').value=localStorage.getItem('ss_api')||'';$('apis').onclick=()=>{localStorage.setItem('ss_api',$('api').value.trim());location.reload()};
+load();loadStorms();restart();setInterval(load,300000);setInterval(loadStorms,120000);
+})()}
+</script></body></html>
