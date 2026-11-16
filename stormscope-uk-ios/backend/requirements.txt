@@ -1,7 +1,0 @@
-fastapi
-uvicorn[standard]
-httpx
-numpy
-scipy
-h5py
-pyproj
