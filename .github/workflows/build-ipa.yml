@@ -1,0 +1,32 @@
+name: Build IPA
+on:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install xcodegen
+      - name: Locate project
+        run: |
+          P=$(find . -name project.yml -not -path './.git/*' | head -1)
+          if [ -z "$P" ]; then
+            echo "project.yml not found. Files in the repository:"
+            find . -maxdepth 3 -not -path './.git/*' | head -60
+            exit 1
+          fi
+          echo "IOS_DIR=$(dirname "$P")" >> "$GITHUB_ENV"
+      - name: Generate project
+        run: cd "$IOS_DIR" && xcodegen generate
+      - name: Build unsigned
+        run: |
+          cd "$IOS_DIR"
+          xcodebuild -project StormScope.xcodeproj -scheme StormScope -configuration Release \
+            -sdk iphoneos -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
+          mkdir Payload && cp -R build/Build/Products/Release-iphoneos/StormScope.app Payload/
+          zip -qr StormScope.ipa Payload
+      - uses: actions/upload-artifact@v4
+        with:
+          name: StormScope-ipa
+          path: ${{ env.IOS_DIR }}/StormScope.ipa
